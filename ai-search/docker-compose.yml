@@ -1,0 +1,11 @@
+version: '3'
+services:
+  llm-answer-engine:
+    build: .
+    environment:
+      - OPENAI_API_KEY=api_key
+      - GROQ_API_KEY=_api_key
+      - BRAVE_SEARCH_API_KEY=api_key
+      - SERPER_API=_api_key
+    ports:
+      - 3000:3000
