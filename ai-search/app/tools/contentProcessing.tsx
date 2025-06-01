@@ -29,7 +29,7 @@ interface ContentResult extends SearchResult {
 
 
 
-export async function get10BlueLinksContents(sources: SearchResult[]): Promise<ContentResult[]> {
+export async function getLinks(sources: SearchResult[]): Promise<ContentResult[]> {
     async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 800): Promise<Response> {
         try {
             const controller = new AbortController();

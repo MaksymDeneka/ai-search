@@ -4,7 +4,7 @@ import { createAI, createStreamableValue } from 'ai/rsc';
 import { config } from './config';
 import { functionCalling } from './function-calling';
 import { getSearchResults, getImages, getVideos } from './tools/searchProviders';
-import { get10BlueLinksContents, processAndVectorizeContent } from './tools/contentProcessing';
+import { getLinks, processAndVectorizeContent } from './tools/contentProcessing';
 import { setInSemanticCache, clearSemanticCache, initializeSemanticCache, getFromSemanticCache } from './tools/semanticCache';
 import { relevantQuestions } from './tools/generateRelevantQuestions';
 import { streamingChatCompletion } from './tools/streamingChatCompletion';
@@ -43,7 +43,7 @@ async function myAction(userMessage: string, mentionTool: string | null, logo: s
       streamable.update({ conditionalFunctionCallUI });
     }
 
-    const html = await get10BlueLinksContents(sources);
+    const html = await getLinks(sources);
     const vectorResults = await processAndVectorizeContent(html, userMessage);
     const accumulatedLLMResponse = await streamingChatCompletion(userMessage, vectorResults, streamable);
     const followUp = await relevantQuestions(sources, userMessage);
