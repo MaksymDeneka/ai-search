@@ -40,8 +40,8 @@ export async function WebScraperMistral(mentionTool: string, userMessage: string
       llmResponse: `Extracting information from: [${extractedUrl}](${extractedUrl}) \n\n`,
     });
     targetUrl = extractedUrl;
-
-    const apiUrl = `http://localhost:3001/api/scrape`;
+    const connUrl = process.env.API_URL;
+    const apiUrl = `http://${connUrl}:3001/api/scrape`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {

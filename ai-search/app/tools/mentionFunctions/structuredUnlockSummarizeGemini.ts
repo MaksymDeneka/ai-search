@@ -241,7 +241,7 @@ export async function WebScraperGemini(mentionTool: string, userMessage: string,
       llmResponse: `Attempting to fetch information from: [${targetUrl}](${targetUrl})\n\n`,
     });
     const connUrl = process.env.API_URL;
-    const apiUrl = `http://${connUrl}/api/scrape`;
+    const apiUrl = `http://${connUrl}:3001/api/scrape`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
