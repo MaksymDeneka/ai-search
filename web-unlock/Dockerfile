@@ -1,11 +1,11 @@
-# web-unlock/Dockerfile
 FROM node:20-alpine
+
+
+RUN apk add --no-cache ca-certificates curl
 
 WORKDIR /app
 
-# Copy package files first for better caching
 COPY package*.json ./
-
 RUN npm install
 
 # Copy all files

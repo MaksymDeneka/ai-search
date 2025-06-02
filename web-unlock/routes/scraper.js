@@ -5,7 +5,6 @@
 
 // const router = express.Router();
 
-
 // const turndownService = new TurndownService({
 //   headingStyle: 'atx',
 //   hr: '---',
@@ -80,7 +79,6 @@
 //   return data;
 // }
 
-
 // async function searchProduct(page, search_text) {
 //   console.log('Waiting for search bar...');
 //   const search_input = await page.waitForSelector('#twotabsearchtextbox', { timeout: 60000 });
@@ -117,9 +115,8 @@
 
 // module.exports = router;
 
-
 const express = require('express');
-const requestPromise = require('request-promise');
+const fetch = require('node-fetch'); // Make sure to install: npm install node-fetch
 const TurndownService = require('turndown');
 const puppeteer = require('puppeteer-core');
 
@@ -154,78 +151,72 @@ function htmlToMarkdown(html) {
 }
 
 const BROWSER_WS = process.env.BROWSER_WS;
+const BRIGHT_DATA_TOKEN =
+  process.env.BRIGHT_DATA_TOKEN ||
+  '1f36d6e116efd1649ce4b9403d7c1cbd467b5de97c97cab619163fcf21acb9c4';
+const BRIGHT_DATA_ZONE = process.env.BRIGHT_DATA_ZONE || 'web_unlocker1';
 
-// Improved request function with better error handling and retries
-async function makeWebUnlockerRequest(url, maxRetries = 3) {
-  const unlockerOptions = {
-    url: url,
-    proxy: process.env.WEB_UNLOCKER_PROXY,
-    rejectUnauthorized: false,
-    timeout: 30000, // 30 seconds timeout
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    },
-    // Additional options for better proxy handling
-    tunnel: true,
-    followRedirect: true,
-    maxRedirects: 5,
-    // Connection pool settings
-    pool: {
-      maxSockets: 5
-    }
-  };
+// New function to use Bright Data API instead of proxy
+async function scrapeWithBrightDataAPI(url) {
+  try {
+    console.log('Making Bright Data API request for URL:', url);
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Making Web Unlocker request (attempt ${attempt}/${maxRetries})`);
-      const response = await requestPromise(unlockerOptions);
-      console.log('Web Unlocker request successful');
-      return response;
-    } catch (error) {
-      console.error(`Attempt ${attempt} failed:`, error.message);
-      
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      // Wait before retrying (exponential backoff)
-      const delay = Math.pow(2, attempt) * 1000;
-      console.log(`Waiting ${delay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+    const response = await fetch('https://api.brightdata.com/request', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${BRIGHT_DATA_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        zone: BRIGHT_DATA_ZONE,
+        url: url,
+        format: 'raw', // Use 'raw' to get HTML content, 'json' for structured data
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Bright Data API error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.text(); // Use .text() for HTML content
+    console.log('Bright Data API request complete');
+
+    return data;
+  } catch (error) {
+    console.error('Error with Bright Data API:', error);
+    throw error;
   }
 }
 
-// Alternative approach using axios with better proxy support
-async function makeWebUnlockerRequestWithAxios(url) {
-  const axios = require('axios');
-  const HttpsProxyAgent = require('https-proxy-agent');
-  
-  const proxyUrl = process.env.WEB_UNLOCKER_PROXY;
-  const proxyAgent = new HttpsProxyAgent(proxyUrl);
-  
-  const config = {
-    url: url,
-    method: 'GET',
-    httpsAgent: proxyAgent,
-    httpAgent: proxyAgent,
-    timeout: 30000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    },
-    maxRedirects: 5,
-    validateStatus: function (status) {
-      return status >= 200 && status < 400;
-    }
-  };
-  
+// Alternative function if you need JSON response format
+async function scrapeWithBrightDataAPIJson(url) {
   try {
-    console.log('Making Web Unlocker request with axios');
-    const response = await axios(config);
-    console.log('Web Unlocker request successful');
-    return response.data;
+    console.log('Making Bright Data API request (JSON) for URL:', url);
+
+    const response = await fetch('https://api.brightdata.com/request', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${BRIGHT_DATA_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        zone: BRIGHT_DATA_ZONE,
+        url: url,
+        format: 'json',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Bright Data API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Bright Data API request (JSON) complete');
+
+    // Extract HTML from the JSON response
+    return data.html || data.content || data;
   } catch (error) {
-    console.error('Axios request failed:', error.message);
+    console.error('Error with Bright Data API (JSON):', error);
     throw error;
   }
 }
@@ -235,31 +226,20 @@ router.post('/scrape', async (req, res) => {
     const { url, query } = req.body;
     console.log('Received request with URL:', url, 'and query:', query);
 
-    // Validate URL
-    if (!url) {
-      return res.status(400).json({ error: 'URL is required' });
-    }
-
     let content;
     if (url.includes('amazon.com')) {
       const amazonData = await scrapeAmazonData(query);
       content = JSON.stringify(amazonData);
     } else {
+      // Use the new API-based approach instead of proxy
       try {
-        // Try the improved request function first
-        const unlockedData = await makeWebUnlockerRequest(url);
-        content = htmlToMarkdown(unlockedData);
-      } catch (error) {
-        console.log('Primary method failed, trying alternative approach...');
-        
-        // If the primary method fails, try axios approach
-        try {
-          const unlockedData = await makeWebUnlockerRequestWithAxios(url);
-          content = htmlToMarkdown(unlockedData);
-        } catch (axiosError) {
-          console.error('Both methods failed:', axiosError.message);
-          throw new Error(`Failed to fetch content: ${error.message}`);
-        }
+        const htmlContent = await scrapeWithBrightDataAPI(url);
+        content = htmlToMarkdown(htmlContent);
+      } catch (apiError) {
+        console.log('API method failed, trying JSON format:', apiError.message);
+        // Fallback to JSON format if raw format fails
+        const htmlContent = await scrapeWithBrightDataAPIJson(url);
+        content = htmlToMarkdown(htmlContent);
       }
     }
 
@@ -268,20 +248,9 @@ router.post('/scrape', async (req, res) => {
     });
   } catch (error) {
     console.error('An error occurred:', error);
-    
-    // More specific error messages
-    let errorMessage = 'An error occurred';
-    if (error.message.includes('ECONNRESET')) {
-      errorMessage = 'Connection was reset by the proxy server. Please try again.';
-    } else if (error.message.includes('timeout')) {
-      errorMessage = 'Request timed out. The website may be slow to respond.';
-    } else if (error.message.includes('tunneling socket')) {
-      errorMessage = 'Proxy connection failed. Please check your proxy configuration.';
-    }
-    
-    res.status(500).json({ 
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    res.status(500).json({
+      error: 'An error occurred',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -291,15 +260,11 @@ async function scrapeAmazonData(search_text) {
     browserWSEndpoint: BROWSER_WS,
   });
   const page = await browser.newPage();
-  
-  try {
-    await page.goto('https://www.amazon.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await searchProduct(page, search_text);
-    const data = await parseProductResults(page);
-    return data;
-  } finally {
-    await browser.close();
-  }
+  await page.goto('https://www.amazon.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await searchProduct(page, search_text);
+  const data = await parseProductResults(page);
+  await browser.close();
+  return data;
 }
 
 async function searchProduct(page, search_text) {
