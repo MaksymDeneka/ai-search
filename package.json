@@ -4,7 +4,7 @@
     "dev": "npx concurrently \"cd ai-search && npm run dev\" \"cd web-unlock && npm start\"",
     "build": "cd ai-search && npm run build",
     "start": "npx concurrently \"cd ai-search && npm run start\" \"cd web-unlock && npm start\"",
-    "install-all": "npm install && cd ai-search && npm install && cd ../web-unlock && npm install"
+    "install": "npx concurrently \"cd ai-search && npm install\" \"cd web-unlock && npm install\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
