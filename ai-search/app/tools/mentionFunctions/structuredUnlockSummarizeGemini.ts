@@ -240,8 +240,8 @@ export async function WebScraperGemini(mentionTool: string, userMessage: string,
     streamable.update({
       llmResponse: `Attempting to fetch information from: [${targetUrl}](${targetUrl})\n\n`,
     });
-
-    const apiUrl = `http://localhost:3001/api/scrape`;
+    const connUrl = process.env.API_URL;
+    const apiUrl = `http://${connUrl}/api/scrape`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
