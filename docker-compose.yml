@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ai-search:
+    build: ./ai-search
+    ports:
+      - '3000:3000'
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - SERPER_API=${SERPER_API}
+    volumes:
+      - ./ai-search:/app
+      - /app/node_modules
+    depends_on:
+      - web-unlock
+    restart: unless-stopped
+
+  web-unlock:
+    build: ./web-unlock
+    ports:
+      - '3001:3001'
+    environment:
+      - WEB_UNLOCKER_PROXY=${WEB_UNLOCKER_PROXY}
+      - PORT=${PORT}
+    volumes:
+      - ./web-unlock:/app
+      - /app/node_modules
+    restart: unless-stopped

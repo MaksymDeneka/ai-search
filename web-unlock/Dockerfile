@@ -1,4 +1,4 @@
-# ai-search/Dockerfile
+# web-unlock/Dockerfile
 FROM node:20-alpine
 
 WORKDIR /app
@@ -11,11 +11,8 @@ RUN npm install
 # Copy all files
 COPY . .
 
-# Build the application
-RUN npm run build
-
 # Expose the port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start the application
 CMD ["npm", "start"]
